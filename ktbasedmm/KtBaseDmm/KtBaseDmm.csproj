@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<LangVersion>10.0</LangVersion>
+    <TargetFrameworks>net6.0;net462</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	<DriverName>KtBaseDmm</DriverName>
+	<DriverVersion>1.0.0.0</DriverVersion>
+	<Company>Keysight Technologies</Company>
+	<Description>IVI.NET Driver for Dmm</Description>
+	<Copyright>Copyright Keysight Technologies 2024</Copyright>
+	<BaseOutputPath>..\build</BaseOutputPath>
+	<AssemblyName>Keysight.$(MSBuildProjectName)</AssemblyName>
+	<RootNamespace>Keysight.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="XmlDocMarkdown" Version="2.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IviBaseDmm\IviBaseDmm.csproj" />
+    <ProjectReference Include="..\IviBaseDriver\IviBaseDriver.csproj" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xmldocmd ..\build\Debug\net462\Keysight.$(MSBuildProjectName).dll ..\build\Documentation\MarkDown" />
+	 </Target>
+
+</Project>
