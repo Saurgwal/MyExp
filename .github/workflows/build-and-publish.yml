@@ -88,15 +88,7 @@ jobs:
       run:  ${{ github.workspace }}\Ivi.DriverCore\SharedComponentBuildScript.ps1 -version "${{ steps.set_version.outputs.version }}"
       shell: pwsh  # Use 'powershell' for Windows PowerShell
 
-    - name: Decode the certificate
-      run: |
-       $certBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_PFX }}")
-       [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
-
-    - name: Import the signing certificate
-      run: |
-        Import-PfxCertificate -FilePath ./cert.pfx -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString "${{ secrets.CERTIFICATE_PASSWORD }}" -AsPlainText -Force)
-
+    -
     - name: Sign the assemblies
       run: |
         $timestampUrl = "http://timestamp.digicert.com"  # Use a trusted timestamping authority if needed
