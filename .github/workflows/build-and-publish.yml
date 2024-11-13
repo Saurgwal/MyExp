@@ -2,7 +2,7 @@
 # They are provided by a third-party and are governed by
 # separate terms of service, privacy policy, and support
 # documentation.
-
+ 
 # This workflow will build, test, sign and package a WPF or Windows Forms desktop application
 # built on .NET Core.
 # To learn how to migrate your existing application to .NET Core,
@@ -35,84 +35,77 @@
 # For more information on GitHub Actions, refer to https://github.com/features/actions
 # For a complete CI/CD sample to get started with GitHub Action workflows for Desktop Applications,
 # refer to https://github.com/microsoft/github-actions-for-desktop-apps
-
+ 
 name: .NET Core Desktop
-
+ 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch:  # Allows manual triggering if needed
-
+ 
 jobs:
-
+ 
   build:
-
+ 
     strategy:
       matrix:
         configuration: [Release]
-
+ 
     runs-on: windows-latest  # For a list of available runner types, refer to
                              # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
-
+ 
     env:
-      Project_Name: Ivi.DriverCore/Ivi.DriverCore/Ivi.DriverCore.csproj  # Replace with your solution name
+      Project_Name: Ivi.DriverCore/Ivi.DriverCore/Ivi.DriverCore.csproj                       # Replace with your solution name, i.e. MyWpfApp.sln.
 
+ 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
+ 
+    # Install the .NET Core workload
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-
+ 
+    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
-
-    - name: Set Dynamic Version
-      id: set_version
-      run: |
-        echo "version=1.0.0.${{ github.run_number }}" >> $GITHUB_ENV
-
     - name: Run PowerShell Script from File
-      run:  ${{ github.workspace }}\Ivi.DriverCore\SharedComponentBuildScript.ps1 -version "${{ steps.set_version.outputs.version }}"
-      shell: pwsh
-
+      run:  ${{ github.workspace }}\Ivi.DriverCore\SharedComponentBuildScript.ps1
+      shell: pwsh  # Use 'powershell' for Windows PowerShell
     - name: Decode the certificate
       run: |
-        $certBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_PFX }}")
-        [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
-
+       $certBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_PFX }}")
+       [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
+ 
     - name: Import the signing certificate
       run: |
-        $password = ConvertTo-SecureString "${{ secrets.CERTIFICATE_PASSWORD }}" -AsPlainText -Force
-        Import-PfxCertificate -FilePath ./cert.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
-
+        Import-PfxCertificate -FilePath ./cert.pfx -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString "${{ secrets.CERTIFICATE_PASSWORD }}" -AsPlainText -Force)
+ 
     - name: Sign the assemblies
       run: |
-        $timestampUrl = "http://timestamp.digicert.com"
+        $timestampUrl = "http://timestamp.digicert.com"  # Use a trusted timestamping authority if needed
         $filesToSign = Get-ChildItem -Recurse -Path './Ivi.DriverCore/build/Release' -Filter *.dll
-
         foreach ($file in $filesToSign) {
-          & "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe" sign /f ./cert.pfx /p "${{ secrets.CERTIFICATE_PASSWORD }}" /t $timestampUrl /v $file.FullName
+& "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe" sign /f ./cert.pfx /p "${{ secrets.CERTIFICATE_PASSWORD }}" /t $timestampUrl /v $file.FullName
         }
-
+ 
     - name: Sign NuGet Package
       run: |
         $nupkgPath = Get-ChildItem -Path './Ivi.DriverCore/build/Release' -Filter *.nupkg
+        write-host $nupkgPath
         dotnet nuget sign $nupkgPath.FullName `
           --certificate-path cert.pfx `
           --certificate-password ${{ secrets.CERTIFICATE_PASSWORD }} `
           --timestamper "http://timestamp.digicert.com" `
           --verbosity detailed
       shell: pwsh
-
     - name: Publish NuGet Package
       run: |
         $nupkgPath = Get-ChildItem -Path './Ivi.DriverCore/build/Release' -Filter *.nupkg
-        dotnet nuget push $nupkgPath --source https://nuget.pkg.github.com/dilskhan/index.json --api-key ${{ secrets.API_KEY }}
+        dotnet nuget push $nupkgPath --source https://nuget.pkg.github.com/dilskhan/index.json --api-key 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
       shell: pwsh
