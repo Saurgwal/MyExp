@@ -57,8 +57,7 @@ jobs:
                              # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
 
     env:
-      Project_Name: Ivi.DriverCore/Ivi.DriverCore/Ivi.DriverCore.csproj                       # Replace with your solution name, i.e. MyWpfApp.sln.
-   
+      Project_Name: Ivi.DriverCore/Ivi.DriverCore/Ivi.DriverCore.csproj  # Replace with your solution name
 
     steps:
     - name: Checkout
@@ -66,59 +65,54 @@ jobs:
       with:
         fetch-depth: 0
 
-    # Install the .NET Core workload
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
 
-    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
-      
-    # Step to dynamically set the version with an incremented fourth digit using GitHub's run_number
+
     - name: Set Dynamic Version
       id: set_version
       run: |
-        echo "::set-output name=version::1.0.0.${{ github.run_number }}"
-      shell: bash
+        echo "version=1.0.0.${{ github.run_number }}" >> $GITHUB_ENV
 
-    # Run PowerShell Script from File with the dynamically set version
     - name: Run PowerShell Script from File
       run:  ${{ github.workspace }}\Ivi.DriverCore\SharedComponentBuildScript.ps1 -version "${{ steps.set_version.outputs.version }}"
-      shell: pwsh  # Use 'powershell' for Windows PowerShell
+      shell: pwsh
 
     - name: Decode the certificate
       run: |
-       $certBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_PFX }}")
-       [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
+        $certBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_PFX }}")
+        [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
 
     - name: Import the signing certificate
       run: |
-        Import-PfxCertificate -FilePath ./cert.pfx -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString "${{ secrets.CERTIFICATE_PASSWORD }}" -AsPlainText -Force)
+        $password = ConvertTo-SecureString "${{ secrets.CERTIFICATE_PASSWORD }}" -AsPlainText -Force
+        Import-PfxCertificate -FilePath ./cert.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
 
     - name: Sign the assemblies
       run: |
-        $timestampUrl = "http://timestamp.digicert.com"  # Use a trusted timestamping authority if needed
+        $timestampUrl = "http://timestamp.digicert.com"
         $filesToSign = Get-ChildItem -Recurse -Path './Ivi.DriverCore/build/Release' -Filter *.dll
-        
+
         foreach ($file in $filesToSign) {
-            & "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe" sign /f ./cert.pfx /p "${{ secrets.CERTIFICATE_PASSWORD }}" /t $timestampUrl /v $file.FullName
-        } 
+          & "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe" sign /f ./cert.pfx /p "${{ secrets.CERTIFICATE_PASSWORD }}" /t $timestampUrl /v $file.FullName
+        }
 
     - name: Sign NuGet Package
       run: |
         $nupkgPath = Get-ChildItem -Path './Ivi.DriverCore/build/Release' -Filter *.nupkg
-        write-host $nupkgPath
         dotnet nuget sign $nupkgPath.FullName `
           --certificate-path cert.pfx `
           --certificate-password ${{ secrets.CERTIFICATE_PASSWORD }} `
           --timestamper "http://timestamp.digicert.com" `
           --verbosity detailed
       shell: pwsh
-      
+
     - name: Publish NuGet Package
       run: |
         $nupkgPath = Get-ChildItem -Path './Ivi.DriverCore/build/Release' -Filter *.nupkg
-        dotnet nuget push $nupkgPath --source https://nuget.pkg.github.com/dilskhan/index.json --api-key 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
+        dotnet nuget push $nupkgPath --source https://nuget.pkg.github.com/dilskhan/index.json --api-key ${{ secrets.API_KEY }}
       shell: pwsh
