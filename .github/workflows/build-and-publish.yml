@@ -76,7 +76,7 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
       
-    # Step to dynamically set the version with an incremented fourth digit using GitHub's run_number
+    # Step to dynamically set the version(fourth digit) 
     - name: Set Dynamic Version
       id: set_version
       run: |
