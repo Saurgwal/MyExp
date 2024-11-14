@@ -6,7 +6,6 @@
 		<LangVersion>10.0</LangVersion>
 		<DriverVersion>1.0.0.0</DriverVersion>
 		<Nullable>enable</Nullable>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<Authors>Ivi TC</Authors>
 		<Company>IVI Foundation</Company>
 		<PackageDescription>Nuget Package of IVI.NET 6.0</PackageDescription>
